@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Digital Diary</title>
+  <title>Digital Diary (Cloud Edition)</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -68,10 +68,76 @@
       color: white;
     }
   </style>
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
+      authDomain: "digital-diary-c99a7.firebaseapp.com",
+      projectId: "digital-diary-c99a7",
+      storageBucket: "digital-diary-c99a7.appspot.com",
+      messagingSenderId: "301278550979",
+      appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
+      measurementId: "G-EFTTQZQNCH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    let editingId = null;
+
+    window.saveEntry = async () => {
+      const name = document.getElementById("nameInput").value.trim();
+      const text = document.getElementById("diaryEntry").value.trim();
+      if (!name || !text) return alert("Please enter both name and entry.");
+
+      if (editingId) {
+        const entryRef = doc(db, "entries", editingId);
+        await updateDoc(entryRef, { name, text });
+        editingId = null;
+      } else {
+        await addDoc(collection(db, "entries"), { name, text });
+      }
+
+      document.getElementById("diaryEntry").value = "";
+      document.getElementById("nameInput").value = "";
+      renderEntries();
+    };
+
+    window.editEntry = (id, name, text) => {
+      editingId = id;
+      document.getElementById("nameInput").value = name;
+      document.getElementById("diaryEntry").value = text;
+    };
+
+    async function renderEntries() {
+      const querySnapshot = await getDocs(collection(db, "entries"));
+      const entriesDiv = document.getElementById("entries");
+      entriesDiv.innerHTML = "";
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `
+          <strong>${data.name}</strong><br />
+          <p>${data.text}</p>
+          <button onclick="editEntry(\"${docSnap.id}\", \"${data.name}\", \"${data.text.replace(/\"/g, '\\\"')}\")">Edit</button>
+        `;
+        entriesDiv.appendChild(div);
+      });
+    }
+
+    window.toggleDarkMode = () => {
+      document.body.classList.toggle("dark-mode");
+    };
+
+    window.addEventListener("DOMContentLoaded", renderEntries);
+  </script>
 </head>
 <body>
   <header>
-    <h1>My Digital Diary</h1>
+    <h1>My Digital Diary (Cloud Edition)</h1>
   </header>
   <div class="container">
     <input type="text" id="nameInput" placeholder="Enter your name" />
@@ -80,58 +146,5 @@
     <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     <div id="entries"></div>
   </div>
-
-  <script>
-    let editingIndex = -1;
-
-    function saveEntry() {
-      const name = document.getElementById("nameInput").value.trim();
-      const text = document.getElementById("diaryEntry").value.trim();
-      if (!name || !text) return alert("Please enter both name and entry.");
-
-      let entries = JSON.parse(localStorage.getItem("entries") || "[]");
-
-      if (editingIndex > -1) {
-        entries[editingIndex] = { name, text };
-        editingIndex = -1;
-      } else {
-        entries.push({ name, text });
-      }
-
-      localStorage.setItem("entries", JSON.stringify(entries));
-      document.getElementById("diaryEntry").value = "";
-      document.getElementById("nameInput").value = "";
-      renderEntries();
-    }
-
-    function renderEntries() {
-      const entries = JSON.parse(localStorage.getItem("entries") || "[]");
-      const entriesDiv = document.getElementById("entries");
-      entriesDiv.innerHTML = "";
-      entries.forEach((entry, index) => {
-        const div = document.createElement("div");
-        div.className = "entry";
-        div.innerHTML = `
-          <strong>${entry.name}</strong><br />
-          <p>${entry.text}</p>
-          <button onclick="editEntry(${index})">Edit</button>
-        `;
-        entriesDiv.appendChild(div);
-      });
-    }
-
-    function editEntry(index) {
-      const entries = JSON.parse(localStorage.getItem("entries") || "[]");
-      document.getElementById("nameInput").value = entries[index].name;
-      document.getElementById("diaryEntry").value = entries[index].text;
-      editingIndex = index;
-    }
-
-    function toggleDarkMode() {
-      document.body.classList.toggle("dark-mode");
-    }
-
-    renderEntries();
-  </script>
 </body>
 </html>
