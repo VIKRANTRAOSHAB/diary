@@ -4,220 +4,180 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digital Diary</title>
-
-    <!-- Firebase JS SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
-
-    <!-- Google Fonts (Roboto) -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-
-    <!-- CSS Styling for Aesthetic -->
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f1f5f9;
-            margin: 0;
-            padding: 0;
-        }
-        header {
-            background-color: #4CAF50;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 30px auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            font-size: 36px;
-            margin-bottom: 20px;
-        }
-        input, textarea, button {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            box-sizing: border-box;
-        }
-        textarea {
-            resize: vertical;
-            min-height: 150px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            font-size: 16px;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .entry {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .entry h3 {
-            margin: 0;
-            font-size: 22px;
-            color: #333;
-        }
-        .entry p {
-            font-size: 16px;
-            color: #555;
-            margin: 10px 0;
-        }
-        .entry button {
-            background-color: #2196F3;
-            margin-right: 10px;
-        }
-        .entry button.delete {
-            background-color: #f44336;
-        }
-        .entry button:hover {
-            opacity: 0.8;
-        }
-        .entry .buttons {
-            margin-top: 10px;
-        }
-    </style>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<header>
     <h1>Digital Diary</h1>
-</header>
 
-<div class="container">
-    <h2>Write your Diary Entry</h2>
-    <input type="text" id="name" placeholder="Enter Your Name" />
-    <textarea id="entryText" placeholder="Write your diary entry here..."></textarea>
-    <button onclick="saveEntry()">Save Entry</button>
+    <!-- Mode Toggle Button -->
+    <button id="darkModeToggle">Switch to Dark Mode</button>
 
-    <div id="entries"></div>
-</div>
+    <!-- Diary Form -->
+    <div id="auth">
+        <input type="text" id="name" placeholder="Enter your name" />
+        <select id="mood">
+            <option value="Happy">Happy</option>
+            <option value="Sad">Sad</option>
+            <option value="Excited">Excited</option>
+            <option value="Neutral">Neutral</option>
+        </select>
+        <div id="editor-container"></div>
+        <button onclick="saveEntry()">Save Entry</button>
+    </div>
 
-<script>
-    // Firebase Configuration
-    const firebaseConfig = {
-        apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
-        authDomain: "digital-diary-c99a7.firebaseapp.com",
-        projectId: "digital-diary-c99a7",
-        storageBucket: "digital-diary-c99a7.firebasestorage.app",
-        messagingSenderId: "301278550979",
-        appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
-        measurementId: "G-EFTTQZQNCH"
-    };
+    <!-- Search and Display Entries -->
+    <div>
+        <input type="text" id="searchInput" placeholder="Search entries..." oninput="searchEntries()">
+        <div id="entries"></div>
+    </div>
 
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    <!-- Pagination -->
+    <div id="pagination">
+        <button onclick="prevPage()">Previous</button>
+        <button onclick="nextPage()">Next</button>
+    </div>
 
-    // Save entry to Firestore
-    function saveEntry() {
-        const name = document.getElementById("name").value;
-        const entryText = document.getElementById("entryText").value;
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
+            authDomain: "digital-diary-c99a7.firebaseapp.com",
+            projectId: "digital-diary-c99a7",
+            storageBucket: "digital-diary-c99a7.firebasestorage.app",
+            messagingSenderId: "301278550979",
+            appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
+            measurementId: "G-EFTTQZQNCH"
+        };
+        
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app);
 
-        if (name && entryText) {
-            db.collection("publicDiary").add({
-                name: name,
-                entryText: entryText,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                alert("Entry saved successfully!");
-                loadEntries(); // Reload entries after save
-                resetForm(); // Reset form fields
-            }).catch((error) => {
-                console.error("Error saving entry: ", error);
-            });
-        } else {
-            alert("Please enter both name and diary text!");
+        // Initialize Quill editor
+        const quill = new Quill('#editor-container', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': '1' }, { 'header': '2' }, { 'font': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['bold', 'italic', 'underline'],
+                    [{ 'align': [] }],
+                    ['link', 'image']
+                ]
+            }
+        });
+
+        // Function to save entry
+        function saveEntry() {
+            const name = document.getElementById('name').value;
+            const entryText = quill.root.innerHTML;
+            const mood = document.getElementById('mood').value;
+
+            if (name && entryText) {
+                db.collection("publicDiary").add({
+                    name: name,
+                    entryText: entryText,
+                    mood: mood,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    alert('Entry saved!');
+                    loadEntries();
+                    resetForm();
+                });
+            } else {
+                alert('Please fill in your name and entry text!');
+            }
         }
-    }
 
-    // Load diary entries from Firestore
-    function loadEntries() {
-        db.collection("publicDiary").orderBy("timestamp", "desc").get().then((querySnapshot) => {
-            const entriesDiv = document.getElementById("entries");
-            entriesDiv.innerHTML = ""; // Clear previous entries
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                const entryDiv = document.createElement("div");
-                entryDiv.className = 'entry';
+        // Function to load diary entries
+        let currentPage = 1;
+        const entriesPerPage = 5;
+
+        function loadEntries() {
+            db.collection("publicDiary")
+                .orderBy("timestamp", "desc")
+                .limit(entriesPerPage * currentPage)
+                .get()
+                .then((querySnapshot) => {
+                    const entries = querySnapshot.docs.map(doc => {
+                        return {
+                            id: doc.id,
+                            data: doc.data()
+                        };
+                    });
+                    displayEntries(entries);
+                });
+        }
+
+        // Display entries
+        function displayEntries(entries) {
+            const entriesDiv = document.getElementById('entries');
+            entriesDiv.innerHTML = '';
+            entries.forEach(entry => {
+                const entryDiv = document.createElement('div');
                 entryDiv.innerHTML = `
-                    <h3>${data.name}</h3>
-                    <p>${data.entryText}</p>
-                    <div class="buttons">
-                        <button onclick="editEntry('${doc.id}', '${data.name}', '${data.entryText}')">Edit</button>
-                        <button class="delete" onclick="deleteEntry('${doc.id}')">Delete</button>
-                    </div>
+                    <p><strong>${entry.data.name}</strong> (${entry.data.mood})</p>
+                    <p>${entry.data.entryText}</p>
+                    <hr>
                 `;
                 entriesDiv.appendChild(entryDiv);
             });
-        });
-    }
-
-    // Edit entry
-    function editEntry(id, name, entryText) {
-        const nameInput = document.getElementById("name");
-        const entryTextArea = document.getElementById("entryText");
-        nameInput.value = name;
-        entryTextArea.value = entryText;
-
-        // Change save button to update
-        const saveButton = document.querySelector("button");
-        saveButton.onclick = () => updateEntry(id);
-    }
-
-    // Update entry in Firestore
-    function updateEntry(id) {
-        const name = document.getElementById("name").value;
-        const entryText = document.getElementById("entryText").value;
-
-        if (name && entryText) {
-            db.collection("publicDiary").doc(id).update({
-                name: name,
-                entryText: entryText
-            }).then(() => {
-                alert("Entry updated successfully!");
-                loadEntries(); // Reload entries after update
-                resetForm(); // Reset form fields
-            }).catch((error) => {
-                console.error("Error updating entry: ", error);
-            });
-        } else {
-            alert("Please enter both name and diary text!");
         }
-    }
 
-    // Delete entry
-    function deleteEntry(id) {
-        db.collection("publicDiary").doc(id).delete().then(() => {
-            alert("Entry deleted successfully!");
-            loadEntries(); // Reload entries after delete
-        }).catch((error) => {
-            console.error("Error deleting entry: ", error);
+        // Pagination functions
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadEntries();
+            }
+        }
+
+        function nextPage() {
+            currentPage++;
+            loadEntries();
+        }
+
+        // Search entries
+        function searchEntries() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            db.collection("publicDiary")
+                .orderBy("timestamp", "desc")
+                .get()
+                .then((querySnapshot) => {
+                    const entries = querySnapshot.docs.map(doc => doc.data())
+                        .filter(entry => entry.entryText.toLowerCase().includes(query));
+                    displayEntries(entries);
+                });
+        }
+
+        // Reset form after saving
+        function resetForm() {
+            document.getElementById('name').value = '';
+            quill.root.innerHTML = '';
+        }
+
+        // Dark mode toggle
+        let darkMode = false;
+        document.getElementById('darkModeToggle').addEventListener('click', () => {
+            darkMode = !darkMode;
+            document.body.style.backgroundColor = darkMode ? '#121212' : '#ffffff';
+            document.body.style.color = darkMode ? '#ffffff' : '#000000';
+            document.getElementById('darkModeToggle').textContent = darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
         });
-    }
 
-    // Reset form after save or update
-    function resetForm() {
-        document.getElementById("name").value = "";
-        document.getElementById("entryText").value = "";
-    }
+        // Auto-save entry every 5 seconds
+        setInterval(() => {
+            if (quill.root.innerHTML.trim() !== "") {
+                saveEntry();
+            }
+        }, 5000);
 
-    // Load entries when the page loads
-    loadEntries();
-</script>
+        loadEntries(); // Initial load
+    </script>
 
 </body>
 </html>
