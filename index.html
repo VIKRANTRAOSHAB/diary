@@ -1,118 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Diary</title>
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Diary</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5;
+      color: #333;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .dark-mode {
+      background-color: #121212;
+      color: #f0f0f0;
+    }
+    header {
+      background-color: #6200ee;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    .container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .dark-mode .container {
+      background-color: #1e1e1e;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      margin-right: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: #6200ee;
+      color: white;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #3700b3;
+    }
+    .entry {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #fafafa;
+    }
+    .dark-mode .entry {
+      background-color: #2a2a2a;
+      color: white;
+    }
+  </style>
 </head>
 <body>
+  <header>
+    <h1>My Digital Diary</h1>
+  </header>
+  <div class="container">
+    <input type="text" id="nameInput" placeholder="Enter your name" />
+    <textarea id="diaryEntry" placeholder="Write your diary entry here..."></textarea>
+    <button onclick="saveEntry()">Save Entry</button>
+    <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    <div id="entries"></div>
+  </div>
 
-    <h1>Digital Diary</h1>
+  <script>
+    let editingIndex = -1;
 
-    <!-- Mode Toggle Button -->
-    <button id="darkModeToggle">Switch to Dark Mode</button>
+    function saveEntry() {
+      const name = document.getElementById("nameInput").value.trim();
+      const text = document.getElementById("diaryEntry").value.trim();
+      if (!name || !text) return alert("Please enter both name and entry.");
 
-    <!-- Diary Form -->
-    <div id="auth">
-        <input type="text" id="name" placeholder="Enter your name" />
-        <select id="mood">
-            <option value="Happy">Happy</option>
-            <option value="Sad">Sad</option>
-            <option value="Excited">Excited</option>
-            <option value="Neutral">Neutral</option>
-        </select>
-        <div id="editor-container"></div>
-        <button onclick="saveEntry()">Save Entry</button>
-    </div>
+      let entries = JSON.parse(localStorage.getItem("entries") || "[]");
 
-    <!-- Search and Display Entries -->
-    <div>
-        <input type="text" id="searchInput" placeholder="Search entries..." oninput="searchEntries()">
-        <div id="entries"></div>
-    </div>
+      if (editingIndex > -1) {
+        entries[editingIndex] = { name, text };
+        editingIndex = -1;
+      } else {
+        entries.push({ name, text });
+      }
 
-    <!-- Pagination -->
-    <div id="pagination">
-        <button onclick="prevPage()">Previous</button>
-        <button onclick="nextPage()">Next</button>
-    </div>
+      localStorage.setItem("entries", JSON.stringify(entries));
+      document.getElementById("diaryEntry").value = "";
+      document.getElementById("nameInput").value = "";
+      renderEntries();
+    }
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
-            authDomain: "digital-diary-c99a7.firebaseapp.com",
-            projectId: "digital-diary-c99a7",
-            storageBucket: "digital-diary-c99a7.firebasestorage.app",
-            messagingSenderId: "301278550979",
-            appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
-            measurementId: "G-EFTTQZQNCH"
-        };
-        
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore(app);
+    function renderEntries() {
+      const entries = JSON.parse(localStorage.getItem("entries") || "[]");
+      const entriesDiv = document.getElementById("entries");
+      entriesDiv.innerHTML = "";
+      entries.forEach((entry, index) => {
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `
+          <strong>${entry.name}</strong><br />
+          <p>${entry.text}</p>
+          <button onclick="editEntry(${index})">Edit</button>
+        `;
+        entriesDiv.appendChild(div);
+      });
+    }
 
-        // Initialize Quill editor
-        const quill = new Quill('#editor-container', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    [{ 'header': '1' }, { 'header': '2' }, { 'font': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['bold', 'italic', 'underline'],
-                    [{ 'align': [] }],
-                    ['link', 'image']
-                ]
-            }
-        });
+    function editEntry(index) {
+      const entries = JSON.parse(localStorage.getItem("entries") || "[]");
+      document.getElementById("nameInput").value = entries[index].name;
+      document.getElementById("diaryEntry").value = entries[index].text;
+      editingIndex = index;
+    }
 
-        // Function to save entry
-        function saveEntry() {
-            const name = document.getElementById('name').value;
-            const entryText = quill.root.innerHTML;
-            const mood = document.getElementById('mood').value;
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
 
-            if (name && entryText) {
-                db.collection("publicDiary").add({
-                    name: name,
-                    entryText: entryText,
-                    mood: mood,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                }).then(() => {
-                    alert('Entry saved!');
-                    loadEntries();
-                    resetForm();
-                });
-            } else {
-                alert('Please fill in your name and entry text!');
-            }
-        }
-
-        // Function to load diary entries
-        let currentPage = 1;
-        const entriesPerPage = 5;
-
-        function loadEntries() {
-            db.collection("publicDiary")
-                .orderBy("timestamp", "desc")
-                .limit(entriesPerPage * currentPage)
-                .get()
-                .then((querySnapshot) => {
-                    const entries = querySnapshot.docs.map(doc => {
-                        return {
-                            id: doc.id,
-                            data: doc.data()
-                        };
-                    });
-                    displayEntries(entries);
-                });
-        }
-
-        // Display entries
-        function displayEntries(entries) {
-            const entriesDiv = document.getElement
+    renderEntries();
+  </script>
+</body>
+</html>
