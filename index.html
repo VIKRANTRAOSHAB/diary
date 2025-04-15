@@ -1,158 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Digital Diary</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f0f0f0;
-      color: #333;
-      padding: 20px;
-      transition: background-color 0.3s, color 0.3s;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Diary</title>
 
-    .dark-mode {
-      background-color: #1e1e1e;
-      color: #f0f0f0;
-    }
+    <!-- Firebase JS SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 
-    h1 {
-      text-align: center;
-    }
+    <!-- Google Fonts (Roboto) -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 
-    .entry-form {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #ffffff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .dark-mode .entry-form {
-      background-color: #2c2c2c;
-    }
-
-    input, textarea {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      margin-bottom: 20px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    button {
-      padding: 10px 20px;
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    .entry {
-      max-width: 600px;
-      margin: 10px auto;
-      background-color: #ffffff;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-    }
-
-    .dark-mode .entry {
-      background-color: #2c2c2c;
-    }
-
-    .entry .meta {
-      font-size: 0.85em;
-      color: gray;
-    }
-  </style>
+    <!-- CSS Styling for Aesthetic -->
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .entry {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .entry h3 {
+            margin: 0;
+            font-size: 22px;
+            color: #333;
+        }
+        .entry p {
+            font-size: 16px;
+            color: #555;
+            margin: 10px 0;
+        }
+        .entry button {
+            background-color: #2196F3;
+            margin-right: 10px;
+        }
+        .entry button.delete {
+            background-color: #f44336;
+        }
+        .entry button:hover {
+            opacity: 0.8;
+        }
+        .entry .buttons {
+            margin-top: 10px;
+        }
+    </style>
 </head>
-
 <body>
-  <h1>📝 Digital Diary</h1>
-  <div style="text-align: center; margin-bottom: 10px;">
-    <label><input type="checkbox" id="darkToggle"> Dark Mode</label>
-  </div>
 
-  <div class="entry-form">
-    <input type="text" id="name" placeholder="Your Name">
-    <textarea id="entry" rows="6" placeholder="Write your thoughts..."></textarea>
+<header>
+    <h1>Digital Diary</h1>
+</header>
+
+<div class="container">
+    <h2>Write your Diary Entry</h2>
+    <input type="text" id="name" placeholder="Enter Your Name" />
+    <textarea id="entryText" placeholder="Write your diary entry here..."></textarea>
     <button onclick="saveEntry()">Save Entry</button>
-  </div>
 
-  <div id="entries"></div>
+    <div id="entries"></div>
+</div>
 
-  <script>
+<script>
+    // Firebase Configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
-      authDomain: "digital-diary-c99a7.firebaseapp.com",
-      projectId: "digital-diary-c99a7",
-      storageBucket: "digital-diary-c99a7.appspot.com",
-      messagingSenderId: "301278550979",
-      appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
-      measurementId: "G-EFTTQZQNCH"
+        apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
+        authDomain: "digital-diary-c99a7.firebaseapp.com",
+        projectId: "digital-diary-c99a7",
+        storageBucket: "digital-diary-c99a7.firebasestorage.app",
+        messagingSenderId: "301278550979",
+        appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
+        measurementId: "G-EFTTQZQNCH"
     };
-    firebase.initializeApp(firebaseConfig);
+
+    const app = firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const nameInput = document.getElementById('name');
-    const entryInput = document.getElementById('entry');
-    const entriesDiv = document.getElementById('entries');
-    const darkToggle = document.getElementById('darkToggle');
-
-    darkToggle.addEventListener('change', () => {
-      document.body.classList.toggle('dark-mode', darkToggle.checked);
-    });
-
+    // Save entry to Firestore
     function saveEntry() {
-      const name = nameInput.value.trim();
-      const entry = entryInput.value.trim();
-      if (!name || !entry) return alert('Please fill out all fields.');
+        const name = document.getElementById("name").value;
+        const entryText = document.getElementById("entryText").value;
 
-      db.collection('entries').add({
-        name,
-        entry,
-        timestamp: new Date()
-      }).then(() => {
-        entryInput.value = '';
-        loadEntries();
-      });
+        if (name && entryText) {
+            db.collection("publicDiary").add({
+                name: name,
+                entryText: entryText,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Entry saved successfully!");
+                loadEntries(); // Reload entries after save
+                resetForm(); // Reset form fields
+            }).catch((error) => {
+                console.error("Error saving entry: ", error);
+            });
+        } else {
+            alert("Please enter both name and diary text!");
+        }
     }
 
+    // Load diary entries from Firestore
     function loadEntries() {
-      entriesDiv.innerHTML = '';
-      db.collection('entries').orderBy('timestamp', 'desc').get().then(snapshot => {
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const div = document.createElement('div');
-          div.classList.add('entry');
-          div.innerHTML = `
-            <div class="meta"><strong>${data.name}</strong> - ${new Date(data.timestamp.toDate()).toLocaleString()}</div>
-            <div contenteditable="true" onblur="updateEntry('${doc.id}', this.innerText)">${data.entry}</div>
-          `;
-          entriesDiv.appendChild(div);
+        db.collection("publicDiary").orderBy("timestamp", "desc").get().then((querySnapshot) => {
+            const entriesDiv = document.getElementById("entries");
+            entriesDiv.innerHTML = ""; // Clear previous entries
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const entryDiv = document.createElement("div");
+                entryDiv.className = 'entry';
+                entryDiv.innerHTML = `
+                    <h3>${data.name}</h3>
+                    <p>${data.entryText}</p>
+                    <div class="buttons">
+                        <button onclick="editEntry('${doc.id}', '${data.name}', '${data.entryText}')">Edit</button>
+                        <button class="delete" onclick="deleteEntry('${doc.id}')">Delete</button>
+                    </div>
+                `;
+                entriesDiv.appendChild(entryDiv);
+            });
         });
-      });
     }
 
-    function updateEntry(id, newText) {
-      db.collection('entries').doc(id).update({ entry: newText });
+    // Edit entry
+    function editEntry(id, name, entryText) {
+        const nameInput = document.getElementById("name");
+        const entryTextArea = document.getElementById("entryText");
+        nameInput.value = name;
+        entryTextArea.value = entryText;
+
+        // Change save button to update
+        const saveButton = document.querySelector("button");
+        saveButton.onclick = () => updateEntry(id);
     }
 
+    // Update entry in Firestore
+    function updateEntry(id) {
+        const name = document.getElementById("name").value;
+        const entryText = document.getElementById("entryText").value;
+
+        if (name && entryText) {
+            db.collection("publicDiary").doc(id).update({
+                name: name,
+                entryText: entryText
+            }).then(() => {
+                alert("Entry updated successfully!");
+                loadEntries(); // Reload entries after update
+                resetForm(); // Reset form fields
+            }).catch((error) => {
+                console.error("Error updating entry: ", error);
+            });
+        } else {
+            alert("Please enter both name and diary text!");
+        }
+    }
+
+    // Delete entry
+    function deleteEntry(id) {
+        db.collection("publicDiary").doc(id).delete().then(() => {
+            alert("Entry deleted successfully!");
+            loadEntries(); // Reload entries after delete
+        }).catch((error) => {
+            console.error("Error deleting entry: ", error);
+        });
+    }
+
+    // Reset form after save or update
+    function resetForm() {
+        document.getElementById("name").value = "";
+        document.getElementById("entryText").value = "";
+    }
+
+    // Load entries when the page loads
     loadEntries();
-  </script>
-</body>
+</script>
 
+</body>
 </html>
