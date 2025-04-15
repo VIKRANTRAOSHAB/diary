@@ -2,18 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>My Online Diary ✍️</title>
+  <title>Secure Digital Diary ✍️🔐</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    textarea { width: 100%; max-width: 500px; margin-bottom: 10px; }
+    button { margin: 5px; }
+    .entry {
+      background: #f0f0f0;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 8px;
+      max-width: 500px;
+    }
+    .date { font-size: 12px; color: gray; margin-top: 5px; }
+    .controls { margin-top: 5px; }
+    #userInfo { margin-bottom: 20px; font-weight: bold; }
+  </style>
 </head>
 <body>
-  <h1>Welcome to Your Digital Diary 📖</h1>
-  <textarea id="diaryEntry" rows="10" cols="50" placeholder="Write your thoughts here..."></textarea><br>
-  <button id="saveBtn">Save Entry</button>
+  <h1>📔 Your Secure Digital Diary</h1>
+  <div id="userInfo">Not Logged In</div>
+  <button id="loginBtn">Login with Google 🔐</button>
+  <button id="logoutBtn" style="display:none;">Logout 🚪</button>
 
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <div id="diarySection" style="display:none;">
+    <textarea id="diaryEntry" rows="6" placeholder="Write your thoughts..."></textarea><br>
+    <button id="saveBtn">Save Entry ✅</button>
+    <h2>🗂️ Your Past Entries</h2>
+    <div id="entriesContainer"></div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
   <script>
-    // Your Firebase Config
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
       authDomain: "digital-diary-c99a7.firebaseapp.com",
@@ -24,27 +49,96 @@
       measurementId: "G-EFTTQZQNCH"
     };
 
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    // Save Button Function
-    document.getElementById("saveBtn").addEventListener("click", async () => {
-      const entry = document.getElementById("diaryEntry").value;
-      if (!entry.trim()) return alert("Please write something before saving! 😅");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userInfo = document.getElementById("userInfo");
+    const diarySection = document.getElementById("diarySection");
+    let currentUser = null;
 
-      try {
-        await db.collection("diaryEntries").add({
-          text: entry,
-          date: new Date().toLocaleString()
-        });
-        alert("Saved to Firebase! 🚀");
-        document.getElementById("diaryEntry").value = "";
-      } catch (err) {
-        console.error("Error writing document: ", err);
-        alert("Failed to save! Check console.");
+    loginBtn.onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    };
+
+    logoutBtn.onclick = () => {
+      auth.signOut();
+    };
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        userInfo.textContent = `Logged in as: ${user.displayName}`;
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline";
+        diarySection.style.display = "block";
+        loadEntries();
+      } else {
+        currentUser = null;
+        userInfo.textContent = "Not Logged In";
+        loginBtn.style.display = "inline";
+        logoutBtn.style.display = "none";
+        diarySection.style.display = "none";
+        document.getElementById("entriesContainer").innerHTML = "";
       }
     });
+
+    document.getElementById("saveBtn").onclick = async () => {
+      const entry = document.getElementById("diaryEntry").value.trim();
+      if (!entry || !currentUser) return alert("Please login and write something! 😅");
+
+      await db.collection("diaryEntries").add({
+        uid: currentUser.uid,
+        text: entry,
+        date: new Date().toLocaleString()
+      });
+
+      document.getElementById("diaryEntry").value = "";
+    };
+
+    function loadEntries() {
+      db.collection("diaryEntries")
+        .where("uid", "==", currentUser.uid)
+        .orderBy("date", "desc")
+        .onSnapshot(snapshot => {
+          const container = document.getElementById("entriesContainer");
+          container.innerHTML = "";
+
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const div = document.createElement("div");
+            div.className = "entry";
+
+            const entryId = doc.id;
+
+            div.innerHTML = `
+              <div id="text-${entryId}">${data.text}</div>
+              <div class="date">${data.date}</div>
+              <div class="controls">
+                <button onclick="editEntry('${entryId}', \`${data.text.replace(/`/g, "\\`")}\`)">✏️ Edit</button>
+                <button onclick="deleteEntry('${entryId}')">🗑️ Delete</button>
+              </div>
+            `;
+            container.appendChild(div);
+          });
+        });
+    }
+
+    async function deleteEntry(id) {
+      if (confirm("Delete this entry?")) {
+        await db.collection("diaryEntries").doc(id).delete();
+      }
+    }
+
+    function editEntry(id, oldText) {
+      const newText = prompt("Edit your entry:", oldText);
+      if (newText !== null) {
+        db.collection("diaryEntries").doc(id).update({ text: newText });
+      }
+    }
   </script>
 </body>
 </html>
