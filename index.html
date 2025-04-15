@@ -2,96 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>My Personal Diary</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f8ff;
-      padding: 40px;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      color: #2e8b57;
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-      font-size: 16px;
-      padding: 10px;
-      border: 1px solid #aaa;
-      border-radius: 10px;
-      resize: vertical;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      background-color: #2e8b57;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #246b46;
-    }
-    #savedEntries {
-      margin-top: 30px;
-    }
-    .entry {
-      background: #fff;
-      padding: 15px;
-      margin-bottom: 10px;
-      border-left: 5px solid #2e8b57;
-      border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-  </style>
+  <title>My Online Diary ✍️</title>
 </head>
 <body>
+  <h1>Welcome to Your Digital Diary 📖</h1>
+  <textarea id="diaryEntry" rows="10" cols="50" placeholder="Write your thoughts here..."></textarea><br>
+  <button id="saveBtn">Save Entry</button>
 
-  <h1>📔 My Personal Diary</h1>
-  
-  <textarea id="diaryEntry" placeholder="Write your thoughts here..."></textarea>
-  <br>
-  <button onclick="saveEntry()">Save Entry</button>
-
-  <div id="savedEntries"></div>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 
   <script>
-    // Load saved entries on page load
-    window.onload = function() {
-      showEntries();
-    }
+    // Your Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
+      authDomain: "digital-diary-c99a7.firebaseapp.com",
+      projectId: "digital-diary-c99a7",
+      storageBucket: "digital-diary-c99a7.appspot.com",
+      messagingSenderId: "301278550979",
+      appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
+      measurementId: "G-EFTTQZQNCH"
+    };
 
-    function saveEntry() {
-      const entry = document.getElementById('diaryEntry').value;
-      if (entry.trim() === "") return alert("Diary can't be empty!");
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-      let diary = JSON.parse(localStorage.getItem("diary")) || [];
-      diary.unshift({ text: entry, date: new Date().toLocaleString() });
+    // Save Button Function
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      const entry = document.getElementById("diaryEntry").value;
+      if (!entry.trim()) return alert("Please write something before saving! 😅");
 
-      localStorage.setItem("diary", JSON.stringify(diary));
-      document.getElementById('diaryEntry').value = "";
-      showEntries();
-    }
-
-    function showEntries() {
-      const diary = JSON.parse(localStorage.getItem("diary")) || [];
-      const savedEntries = document.getElementById('savedEntries');
-      savedEntries.innerHTML = "<h2>📝 Saved Entries</h2>";
-      
-      diary.forEach(entry => {
-        savedEntries.innerHTML += `
-          <div class="entry">
-            <strong>${entry.date}</strong><br>
-            <p>${entry.text}</p>
-          </div>
-        `;
-      });
-    }
+      try {
+        await db.collection("diaryEntries").add({
+          text: entry,
+          date: new Date().toLocaleString()
+        });
+        alert("Saved to Firebase! 🚀");
+        document.getElementById("diaryEntry").value = "";
+      } catch (err) {
+        console.error("Error writing document: ", err);
+        alert("Failed to save! Check console.");
+      }
+    });
   </script>
-
 </body>
 </html>
