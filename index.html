@@ -70,23 +70,25 @@
       document.getElementById("diaryEntry").value = "";
     };
 
-    // Show all entries
-    db.collection("publicDiary").orderBy("date", "desc").onSnapshot(snapshot => {
-      const container = document.getElementById("entriesContainer");
-      container.innerHTML = "";
+    // Show all entries (persistence + real-time updates)
+    db.collection("publicDiary")
+      .orderBy("date", "desc")
+      .onSnapshot(snapshot => {
+        const container = document.getElementById("entriesContainer");
+        container.innerHTML = "";
 
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const div = document.createElement("div");
-        div.className = "entry";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "entry";
 
-        div.innerHTML = `
-          <div>${data.text}</div>
-          <div class="meta">– ${data.name}, ${data.date}</div>
-        `;
-        container.appendChild(div);
+          div.innerHTML = `
+            <div>${data.text}</div>
+            <div class="meta">– ${data.name}, ${data.date}</div>
+          `;
+          container.appendChild(div);
+        });
       });
-    });
   </script>
 </body>
 </html>
