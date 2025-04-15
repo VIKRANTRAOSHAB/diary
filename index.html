@@ -1,78 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Digital Diary (Cloud Edition)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Diary</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f0f2f5;
+      background-color: #f0f0f0;
       color: #333;
+      padding: 20px;
       transition: background-color 0.3s, color 0.3s;
     }
+
     .dark-mode {
-      background-color: #121212;
+      background-color: #1e1e1e;
       color: #f0f0f0;
     }
-    header {
-      background-color: #6200ee;
-      color: white;
-      padding: 1rem;
+
+    h1 {
       text-align: center;
     }
-    .container {
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 1rem;
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+    .entry-form {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-    .dark-mode .container {
-      background-color: #1e1e1e;
+
+    .dark-mode .entry-form {
+      background-color: #2c2c2c;
     }
-    textarea, input {
+
+    input, textarea {
       width: 100%;
-      padding: 0.8rem;
-      margin-bottom: 1rem;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 20px;
       border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 1rem;
+      border-radius: 5px;
     }
+
     button {
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      margin-right: 1rem;
+      padding: 10px 20px;
+      background-color: #007BFF;
+      color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 5px;
       cursor: pointer;
-      background-color: #6200ee;
-      color: white;
-      transition: background-color 0.3s;
     }
+
     button:hover {
-      background-color: #3700b3;
+      background-color: #0056b3;
     }
+
     .entry {
-      margin-top: 1rem;
-      padding: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #fafafa;
+      max-width: 600px;
+      margin: 10px auto;
+      background-color: #ffffff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     }
+
     .dark-mode .entry {
-      background-color: #2a2a2a;
-      color: white;
+      background-color: #2c2c2c;
+    }
+
+    .entry .meta {
+      font-size: 0.85em;
+      color: gray;
     }
   </style>
-  <script type="module">
-    // Import Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+</head>
 
+<body>
+  <h1>📝 Digital Diary</h1>
+  <div style="text-align: center; margin-bottom: 10px;">
+    <label><input type="checkbox" id="darkToggle"> Dark Mode</label>
+  </div>
+
+  <div class="entry-form">
+    <input type="text" id="name" placeholder="Your Name">
+    <textarea id="entry" rows="6" placeholder="Write your thoughts..."></textarea>
+    <button onclick="saveEntry()">Save Entry</button>
+  </div>
+
+  <div id="entries"></div>
+
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
       authDomain: "digital-diary-c99a7.firebaseapp.com",
@@ -82,69 +104,55 @@
       appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
       measurementId: "G-EFTTQZQNCH"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    let editingId = null;
+    const nameInput = document.getElementById('name');
+    const entryInput = document.getElementById('entry');
+    const entriesDiv = document.getElementById('entries');
+    const darkToggle = document.getElementById('darkToggle');
 
-    window.saveEntry = async () => {
-      const name = document.getElementById("nameInput").value.trim();
-      const text = document.getElementById("diaryEntry").value.trim();
-      if (!name || !text) return alert("Please enter both name and entry.");
+    darkToggle.addEventListener('change', () => {
+      document.body.classList.toggle('dark-mode', darkToggle.checked);
+    });
 
-      if (editingId) {
-        const entryRef = doc(db, "entries", editingId);
-        await updateDoc(entryRef, { name, text });
-        editingId = null;
-      } else {
-        await addDoc(collection(db, "entries"), { name, text });
-      }
+    function saveEntry() {
+      const name = nameInput.value.trim();
+      const entry = entryInput.value.trim();
+      if (!name || !entry) return alert('Please fill out all fields.');
 
-      document.getElementById("diaryEntry").value = "";
-      document.getElementById("nameInput").value = "";
-      renderEntries();
-    };
-
-    window.editEntry = (id, name, text) => {
-      editingId = id;
-      document.getElementById("nameInput").value = name;
-      document.getElementById("diaryEntry").value = text;
-    };
-
-    async function renderEntries() {
-      const querySnapshot = await getDocs(collection(db, "entries"));
-      const entriesDiv = document.getElementById("entries");
-      entriesDiv.innerHTML = "";
-      querySnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        const div = document.createElement("div");
-        div.className = "entry";
-        div.innerHTML = `
-          <strong>${data.name}</strong><br />
-          <p>${data.text}</p>
-          <button onclick="editEntry(\"${docSnap.id}\", \"${data.name}\", \"${data.text.replace(/\"/g, '\\\"')}\")">Edit</button>
-        `;
-        entriesDiv.appendChild(div);
+      db.collection('entries').add({
+        name,
+        entry,
+        timestamp: new Date()
+      }).then(() => {
+        entryInput.value = '';
+        loadEntries();
       });
     }
 
-    window.toggleDarkMode = () => {
-      document.body.classList.toggle("dark-mode");
-    };
+    function loadEntries() {
+      entriesDiv.innerHTML = '';
+      db.collection('entries').orderBy('timestamp', 'desc').get().then(snapshot => {
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement('div');
+          div.classList.add('entry');
+          div.innerHTML = `
+            <div class="meta"><strong>${data.name}</strong> - ${new Date(data.timestamp.toDate()).toLocaleString()}</div>
+            <div contenteditable="true" onblur="updateEntry('${doc.id}', this.innerText)">${data.entry}</div>
+          `;
+          entriesDiv.appendChild(div);
+        });
+      });
+    }
 
-    window.addEventListener("DOMContentLoaded", renderEntries);
+    function updateEntry(id, newText) {
+      db.collection('entries').doc(id).update({ entry: newText });
+    }
+
+    loadEntries();
   </script>
-</head>
-<body>
-  <header>
-    <h1>My Digital Diary (Cloud Edition)</h1>
-  </header>
-  <div class="container">
-    <input type="text" id="nameInput" placeholder="Enter your name" />
-    <textarea id="diaryEntry" placeholder="Write your diary entry here..."></textarea>
-    <button onclick="saveEntry()">Save Entry</button>
-    <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
-    <div id="entries"></div>
-  </div>
 </body>
+
 </html>
