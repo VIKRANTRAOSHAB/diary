@@ -1,94 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Digital Diary ✍️ (No Login)</title>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    input, textarea { width: 100%; max-width: 500px; margin-bottom: 10px; padding: 8px; }
-    button { padding: 10px 20px; margin-bottom: 20px; }
-    .entry {
-      background: #f0f0f0;
-      padding: 10px;
-      margin-top: 15px;
-      border-radius: 8px;
-      max-width: 500px;
-    }
-    .meta {
-      font-size: 12px;
-      color: gray;
-      margin-top: 5px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Diary</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <h1>📔 Public Digital Diary</h1>
+    <h1>Welcome to the Digital Diary!</h1>
 
-  <input type="text" id="userName" placeholder="Your Name (e.g. Vikrant)">
-  <textarea id="diaryEntry" rows="6" placeholder="Write your thoughts..."></textarea><br>
-  <button id="saveBtn">Save Entry ✅</button>
+    <input type="text" id="name" placeholder="Enter Your Name" /><br><br>
+    <textarea id="entryText" rows="4" cols="50" placeholder="Write your diary entry here..."></textarea><br><br>
+    <button onclick="saveEntry()">Save Entry</button>
+    <div id="entries"></div>
 
-  <h2>🗂️ All Entries</h2>
-  <div id="entriesContainer"></div>
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
+            authDomain: "digital-diary-c99a7.firebaseapp.com",
+            projectId: "digital-diary-c99a7",
+            storageBucket: "digital-diary-c99a7.firebasestorage.app",
+            messagingSenderId: "301278550979",
+            appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
+            measurementId: "G-EFTTQZQNCH"
+        };
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-  <script>
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyA3ZZjSQq2rIPRdoT4RLl9XKjSNHwCOEWM",
-      authDomain: "digital-diary-c99a7.firebaseapp.com",
-      projectId: "digital-diary-c99a7",
-      storageBucket: "digital-diary-c99a7.appspot.com",
-      messagingSenderId: "301278550979",
-      appId: "1:301278550979:web:c59b74d465ad7aaccdbb76",
-      measurementId: "G-EFTTQZQNCH"
-    };
+        // Save entry to Firestore
+        function saveEntry() {
+            const name = document.getElementById("name").value;
+            const entryText = document.getElementById("entryText").value;
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+            if (name && entryText) {
+                db.collection("publicDiary").add({
+                    name: name,
+                    entryText: entryText,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    alert("Entry saved successfully!");
+                    loadEntries(); // Reload entries after save
+                }).catch((error) => {
+                    console.error("Error saving entry: ", error);
+                });
+            } else {
+                alert("Please enter both name and diary text!");
+            }
+        }
 
-    // Save Entry
-    document.getElementById("saveBtn").onclick = async () => {
-      const name = document.getElementById("userName").value.trim();
-      const entry = document.getElementById("diaryEntry").value.trim();
+        // Load diary entries from Firestore
+        function loadEntries() {
+            db.collection("publicDiary").orderBy("timestamp", "desc").get().then((querySnapshot) => {
+                const entriesDiv = document.getElementById("entries");
+                entriesDiv.innerHTML = ""; // Clear previous entries
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const entryDiv = document.createElement("div");
+                    entryDiv.innerHTML = `
+                        <h3>${data.name}</h3>
+                        <p>${data.entryText}</p>
+                        <button onclick="editEntry('${doc.id}', '${data.name}', '${data.entryText}')">Edit</button>
+                        <button onclick="deleteEntry('${doc.id}')">Delete</button>
+                        <hr>
+                    `;
+                    entriesDiv.appendChild(entryDiv);
+                });
+            });
+        }
 
-      if (!name || !entry) {
-        return alert("Please enter both your name and diary entry ✍️");
-      }
+        // Edit entry
+        function editEntry(id, name, entryText) {
+            const nameInput = document.getElementById("name");
+            const entryTextArea = document.getElementById("entryText");
+            nameInput.value = name;
+            entryTextArea.value = entryText;
 
-      await db.collection("publicDiary").add({
-        name,
-        text: entry,
-        date: new Date().toLocaleString()
-      });
+            // Change save button to update
+            const saveButton = document.querySelector("button");
+            saveButton.onclick = () => updateEntry(id);
+        }
 
-      document.getElementById("userName").value = "";
-      document.getElementById("diaryEntry").value = "";
-    };
+        // Update entry in Firestore
+        function updateEntry(id) {
+            const name = document.getElementById("name").value;
+            const entryText = document.getElementById("entryText").value;
 
-    // Show all entries (persistence + real-time updates)
-    db.collection("publicDiary")
-      .orderBy("date", "desc")
-      .onSnapshot(snapshot => {
-        const container = document.getElementById("entriesContainer");
-        container.innerHTML = "";
+            if (name && entryText) {
+                db.collection("publicDiary").doc(id).update({
+                    name: name,
+                    entryText: entryText
+                }).then(() => {
+                    alert("Entry updated successfully!");
+                    loadEntries(); // Reload entries after update
+                }).catch((error) => {
+                    console.error("Error updating entry: ", error);
+                });
+            } else {
+                alert("Please enter both name and diary text!");
+            }
+        }
 
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const div = document.createElement("div");
-          div.className = "entry";
+        // Delete entry
+        function deleteEntry(id) {
+            db.collection("publicDiary").doc(id).delete().then(() => {
+                alert("Entry deleted successfully!");
+                loadEntries(); // Reload entries after delete
+            }).catch((error) => {
+                console.error("Error deleting entry: ", error);
+            });
+        }
 
-          div.innerHTML = `
-            <div>${data.text}</div>
-            <div class="meta">– ${data.name}, ${data.date}</div>
-          `;
-          container.appendChild(div);
-        });
-      });
-  </script>
+        // Load entries when the page loads
+        loadEntries();
+    </script>
 </body>
 </html>
